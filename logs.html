@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs</title>
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header>
+    <h1>System Logs</h1>
+    <nav>
+        <a href="/index.html">Patients</a>
+        <a href="/catalogue.html">Catalogue</a>
+        <a href="/logs.html">Logs</a>
+    </nav>
+</header>
+<main class="split logs-page">
+    <section class="panel">
+        <h2>Command Log</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Command</th>
+                <th>Payload</th>
+                <th>User</th>
+                <th>Executed At</th>
+            </tr>
+            </thead>
+            <tbody id="command-log-table"></tbody>
+        </table>
+    </section>
+    <section class="panel">
+        <h2>Audit Log</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Event</th>
+                <th>Observation</th>
+                <th>Patient</th>
+                <th>Details</th>
+                <th>Timestamp</th>
+            </tr>
+            </thead>
+            <tbody id="audit-log-table"></tbody>
+        </table>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

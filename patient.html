@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Detail</title>
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header>
+    <h1>Patient Detail</h1>
+    <nav>
+        <a href="/index.html">Patients</a>
+        <a href="/catalogue.html">Catalogue</a>
+        <a href="/logs.html">Logs</a>
+    </nav>
+</header>
+<main class="patient-detail">
+    <section class="panel">
+        <h2 id="patient-name">Patient</h2>
+        <p id="patient-summary"></p>
+        <button id="evaluate-button">Evaluate rules</button>
+        <p id="inference-message" class="message"></p>
+        <div id="inference-results"></div>
+    </section>
+
+    <section class="grid">
+        <section class="panel">
+            <h2>Record Measurement</h2>
+            <form id="measurement-form">
+                <label>Phenomenon type
+                    <select name="phenomenonTypeId" id="measurement-type-select" required></select>
+                </label>
+                <label>Amount
+                    <input type="number" step="0.01" name="amount" required>
+                </label>
+                <label>Unit
+                    <select name="unit" id="measurement-unit-select" required></select>
+                </label>
+                <label>Protocol (optional)
+                    <select name="protocolId" id="measurement-protocol-select">
+                        <option value="">None</option>
+                    </select>
+                </label>
+                <label>Applicability time <span class="field-hint">(defaults to now if cleared)</span>
+                    <input type="datetime-local" name="applicabilityTime" autocomplete="off">
+                </label>
+                <button type="submit">Record measurement</button>
+            </form>
+            <p id="measurement-message" class="message"></p>
+        </section>
+
+        <section class="panel">
+            <h2>Record Category Observation</h2>
+            <form id="category-form">
+                <label>Phenomenon type
+                    <select id="category-phenomenon-type-select" required></select>
+                </label>
+                <label>Phenomenon
+                    <select name="phenomenonId" id="phenomenon-select" required></select>
+                </label>
+                <label>Presence
+                    <select name="presence" required>
+                        <option value="PRESENT">Present</option>
+                        <option value="ABSENT">Absent</option>
+                    </select>
+                </label>
+                <label>Protocol (optional)
+                    <select name="protocolId" id="category-protocol-select">
+                        <option value="">None</option>
+                    </select>
+                </label>
+                <label>Applicability time <span class="field-hint">(defaults to now if cleared)</span>
+                    <input type="datetime-local" name="applicabilityTime" autocomplete="off">
+                </label>
+                <button type="submit">Record category observation</button>
+            </form>
+            <p id="category-message" class="message"></p>
+        </section>
+    </section>
+
+    <section class="panel">
+        <h2>Observations</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Phenomenon Type</th>
+                <th>Reading / finding</th>
+                <th>Applicability</th>
+                <th>Recorded</th>
+                <th>Protocol</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="observation-table"></tbody>
+        </table>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

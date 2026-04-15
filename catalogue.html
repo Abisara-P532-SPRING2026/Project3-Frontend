@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalogue</title>
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header>
+    <h1>Catalogue</h1>
+    <nav>
+        <a href="/index.html">Patients</a>
+        <a href="/catalogue.html">Catalogue</a>
+        <a href="/logs.html">Logs</a>
+    </nav>
+</header>
+<main class="catalogue-main">
+    <div class="catalogue-forms">
+        <section class="panel">
+            <h2>Add phenomenon type</h2>
+            <form id="phenomenon-type-form">
+                <label>Name
+                    <input name="name" required>
+                </label>
+                <label>Kind
+                    <select name="measurementKind" id="kind-select" required>
+                        <option value="QUANTITATIVE">Quantitative</option>
+                        <option value="QUALITATIVE">Qualitative</option>
+                    </select>
+                </label>
+                <label id="kind-detail-label">
+                    <span id="kind-detail-caption">Allowed units (comma separated)</span>
+                    <input name="kindDetail" id="kind-detail-input" autocomplete="off">
+                </label>
+                <button type="submit">Save phenomenon type</button>
+            </form>
+            <p id="phenomenon-type-message" class="message"></p>
+        </section>
+
+        <section class="panel">
+            <h2>Add protocol</h2>
+            <form id="protocol-form">
+                <label>Name
+                    <input name="name" required>
+                </label>
+                <label>Description
+                    <textarea name="description" rows="4"></textarea>
+                </label>
+                <label>Accuracy rating
+                    <select name="accuracyRating" required>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                    </select>
+                </label>
+                <button type="submit">Save protocol</button>
+            </form>
+            <p id="protocol-message" class="message"></p>
+        </section>
+    </div>
+
+    <section class="panel catalogue-data">
+        <h2>Quantitative phenomenon types</h2>
+        <div class="table-scroll">
+            <table class="catalogue-types-table">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Allowed units</th>
+                </tr>
+                </thead>
+                <tbody id="quantitative-types-table"></tbody>
+            </table>
+        </div>
+
+        <h2 class="catalogue-subheading">Qualitative phenomenon types</h2>
+        <div class="table-scroll">
+            <table class="catalogue-types-table">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Phenomena</th>
+                </tr>
+                </thead>
+                <tbody id="qualitative-types-table"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel catalogue-data">
+        <h2>Protocols</h2>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Accuracy</th>
+                    <th>Description</th>
+                </tr>
+                </thead>
+                <tbody id="protocol-table"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Observation Tracker</title>
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header>
+    <h1>Patient Observation Tracker</h1>
+    <nav>
+        <a href="/index.html">Patients</a>
+        <a href="/catalogue.html">Catalogue</a>
+        <a href="/logs.html">Logs</a>
+    </nav>
+</header>
+<main class="grid">
+    <section class="panel">
+        <h2>Create Patient</h2>
+        <form id="patient-form">
+            <label>Full name
+                <input name="fullName" required>
+            </label>
+            <label>Date of birth
+                <input type="date" name="dateOfBirth" required>
+            </label>
+            <label>Note
+                <textarea name="note" rows="4"></textarea>
+            </label>
+            <button type="submit">Add patient</button>
+        </form>
+        <p id="patient-message" class="message"></p>
+    </section>
+
+    <section class="panel">
+        <h2>Patients</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>DOB</th>
+                <th>Note</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="patient-table"></tbody>
+        </table>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
