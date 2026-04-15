@@ -95,7 +95,7 @@ async function loadIndexPage() {
                 <td>${escapeHtml(patient.fullName)}</td>
                 <td>${escapeHtml(patient.dateOfBirth)}</td>
                 <td>${patient.note ? escapeHtml(patient.note) : "—"}</td>
-                <td><a href="/patient.html?id=${patient.id}">Open</a></td>
+                <td><a href="patient.html?id=${patient.id}">Open</a></td>
             </tr>
         `).join("");
     }
