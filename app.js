@@ -5,7 +5,7 @@ const explicitApiBase = window.TRACKER_API_BASE_URL
 const configuredApiBase = explicitApiBase
     || (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
         ? "http://localhost:8080"
-        : "https://project3-backend-ulha.onrender.com");
+        : "https://project3-backend-1-y1d6.onrender.com");
 
 const API_BASE = configuredApiBase.replace(/\/$/, "");
 let currentUser = null;
