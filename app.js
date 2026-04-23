@@ -8,6 +8,7 @@ const configuredApiBase = explicitApiBase
         : "https://project3-backend-ulha.onrender.com");
 
 const API_BASE = configuredApiBase.replace(/\/$/, "");
+let currentUser = null;
 
 function apiUrl(path) {
     if (/^https?:\/\//.test(path)) {
@@ -19,6 +20,7 @@ function apiUrl(path) {
 async function request(url, options = {}) {
     const response = await fetch(apiUrl(url), {
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         ...options
     });
     if (!response.ok) {
@@ -33,6 +35,38 @@ async function request(url, options = {}) {
     }
     const text = await response.text();
     return text ? JSON.parse(text) : null;
+}
+
+async function initUserSession() {
+    const nav = document.querySelector("header nav");
+    if (!nav) {
+        return;
+    }
+    const users = await request("/api/users");
+    const wrapper = document.createElement("label");
+    wrapper.style.marginLeft = "auto";
+    wrapper.style.display = "flex";
+    wrapper.style.alignItems = "center";
+    wrapper.style.gap = "0.4rem";
+    wrapper.style.color = "#dbeafe";
+    wrapper.textContent = "User";
+    const select = document.createElement("select");
+    select.id = "login-user-select";
+    select.style.padding = "0.25rem 0.4rem";
+    select.innerHTML = users.map(user =>
+        `<option value="${user.id}" ${user.current ? "selected" : ""}>${escapeHtml(user.username)} (${user.role})</option>`
+    ).join("");
+    select.addEventListener("change", async () => {
+        await request("/api/login", {
+            method: "POST",
+            body: JSON.stringify({ userId: Number(select.value) })
+        });
+        currentUser = users.find(user => user.id === Number(select.value)) || null;
+        await loadLogsPage();
+    });
+    wrapper.appendChild(select);
+    nav.appendChild(wrapper);
+    currentUser = users.find(user => user.current) || users[0] || null;
 }
 
 function setMessage(id, message, isError = false) {
@@ -133,6 +167,39 @@ async function loadCataloguePage() {
 
     const kindSelect = document.getElementById("kind-select");
     const kindDetailCaption = document.getElementById("kind-detail-caption");
+    const catalogueMain = document.querySelector("main.catalogue-main");
+    let rulesPanel = document.getElementById("rules-panel");
+    let hierarchyPanel = document.getElementById("hierarchy-panel");
+    if (!rulesPanel && catalogueMain) {
+        rulesPanel = document.createElement("section");
+        rulesPanel.id = "rules-panel";
+        rulesPanel.className = "panel catalogue-data";
+        rulesPanel.innerHTML = `
+            <h2>Associative functions</h2>
+            <table>
+                <thead><tr><th>Rule</th><th>Product</th><th>Strategy</th><th>Threshold</th></tr></thead>
+                <tbody id="rules-table"></tbody>
+            </table>`;
+        catalogueMain.appendChild(rulesPanel);
+    }
+    if (!hierarchyPanel && catalogueMain) {
+        hierarchyPanel = document.createElement("section");
+        hierarchyPanel.id = "hierarchy-panel";
+        hierarchyPanel.className = "panel";
+        hierarchyPanel.innerHTML = `
+            <h2>Phenomenon hierarchy</h2>
+            <form id="parent-concept-form">
+                <label>Child concept
+                    <select id="child-concept-select" required></select>
+                </label>
+                <label>Parent concept (optional)
+                    <select id="parent-concept-select"><option value="">None</option></select>
+                </label>
+                <button type="submit">Save parent</button>
+            </form>
+            <p id="hierarchy-message" class="message"></p>`;
+        catalogueMain.appendChild(hierarchyPanel);
+    }
 
     function syncKindFields() {
         const qualitative = kindSelect.value === "QUALITATIVE";
@@ -142,9 +209,11 @@ async function loadCataloguePage() {
     }
 
     async function refreshCatalogue() {
-        const [phenomenonTypes, protocols] = await Promise.all([
+        const [phenomenonTypes, protocols, rules, phenomena] = await Promise.all([
             request("/api/phenomenon-types"),
-            request("/api/protocols")
+            request("/api/protocols"),
+            request("/api/associative-functions"),
+            request("/api/phenomena")
         ]);
 
         const quantitative = phenomenonTypes.filter(type => type.measurementKind === "QUANTITATIVE");
@@ -184,6 +253,45 @@ async function loadCataloguePage() {
                 <td>${protocol.description ? escapeHtml(protocol.description) : "—"}</td>
             </tr>
         `).join("");
+
+        const rulesTable = document.getElementById("rules-table");
+        if (rulesTable) {
+            rulesTable.innerHTML = rules.map(rule => `
+                <tr>
+                    <td>${escapeHtml(rule.name)}</td>
+                    <td>${escapeHtml(rule.productConceptName)}</td>
+                    <td>
+                        <select class="rule-strategy-select" data-id="${rule.id}">
+                            <option value="CONJUNCTIVE" ${rule.strategyType === "CONJUNCTIVE" ? "selected" : ""}>CONJUNCTIVE</option>
+                            <option value="WEIGHTED" ${rule.strategyType === "WEIGHTED" ? "selected" : ""}>WEIGHTED</option>
+                        </select>
+                    </td>
+                    <td><input class="rule-threshold-input" data-id="${rule.id}" type="number" step="0.1" value="${rule.threshold ?? ""}"></td>
+                </tr>
+            `).join("");
+            document.querySelectorAll(".rule-strategy-select, .rule-threshold-input").forEach(element => {
+                element.addEventListener("change", async () => {
+                    const id = Number(element.dataset.id);
+                    const strategy = document.querySelector(`.rule-strategy-select[data-id="${id}"]`).value;
+                    const thresholdRaw = document.querySelector(`.rule-threshold-input[data-id="${id}"]`).value;
+                    await request(`/api/associative-functions/${id}/strategy`, {
+                        method: "PUT",
+                        body: JSON.stringify({
+                            strategyType: strategy,
+                            threshold: thresholdRaw === "" ? null : Number(thresholdRaw)
+                        })
+                    });
+                });
+            });
+        }
+
+        const childSelect = document.getElementById("child-concept-select");
+        const parentSelect = document.getElementById("parent-concept-select");
+        if (childSelect && parentSelect) {
+            const options = phenomena.map(phen => `<option value="${phen.id}">${escapeHtml(phen.name)}</option>`).join("");
+            childSelect.innerHTML = options;
+            parentSelect.innerHTML = `<option value="">None</option>${options}`;
+        }
     }
 
     document.getElementById("phenomenon-type-form").addEventListener("submit", async event => {
@@ -229,6 +337,20 @@ async function loadCataloguePage() {
             setMessage("protocol-message", error.message, true);
         }
     });
+
+    const parentConceptForm = document.getElementById("parent-concept-form");
+    if (parentConceptForm) {
+        parentConceptForm.addEventListener("submit", async event => {
+            event.preventDefault();
+            const childId = Number(document.getElementById("child-concept-select").value);
+            const parentRaw = document.getElementById("parent-concept-select").value;
+            await request(`/api/phenomena/${childId}/parent`, {
+                method: "PUT",
+                body: JSON.stringify({ parentConceptId: parentRaw ? Number(parentRaw) : null })
+            });
+            setMessage("hierarchy-message", "Parent concept updated");
+        });
+    }
 
     kindSelect.addEventListener("change", syncKindFields);
     syncKindFields();
@@ -335,10 +457,11 @@ async function loadPatientPage() {
     }
 
     function renderObservationValueCell(observation) {
+        const inferredClass = observation.source === "INFERRED" ? " inferred-observation" : "";
         if (observation.observationType === "measurement") {
             return `
-                <td class="obs-cell-value">
-                    <div class="obs-value-block">
+                <td class="obs-cell-value${inferredClass}">
+                    <div class="obs-value-block${inferredClass}">
                         <div class="obs-value-main">
                             <span class="amount">${escapeHtml(String(observation.amount))}</span>
                             <span class="unit">${escapeHtml(observation.unit)}</span>
@@ -351,8 +474,8 @@ async function loadPatientPage() {
         const presenceClass = present ? "presence-badge presence-badge--present" : "presence-badge presence-badge--absent";
         const presenceLabel = present ? "Present" : "Absent";
         return `
-                <td class="obs-cell-value">
-                    <div class="obs-value-block">
+                <td class="obs-cell-value${inferredClass}">
+                    <div class="obs-value-block${inferredClass}">
                         <div class="obs-concept-line">
                             <span class="obs-concept-name">${escapeHtml(observation.phenomenon)}</span>
                             <span class="${presenceClass}">${presenceLabel}</span>
@@ -376,6 +499,7 @@ async function loadPatientPage() {
                 <td>
                     <span class="status ${observation.status}">${escapeHtml(observation.status)}</span>
                     ${observation.rejectionReason ? `<div class="obs-table-meta" style="margin-top:0.35rem">${escapeHtml(observation.rejectionReason)}</div>` : ""}
+                    <div class="obs-table-meta">${escapeHtml(observation.source || "MANUAL")}${observation.anomaly ? " · ANOMALY" : ""}</div>
                 </td>
                 <td>${observation.status === "ACTIVE" ? `<button type="button" data-id="${observation.id}" class="reject-button secondary">Reject</button>` : "—"}</td>
             </tr>
@@ -467,6 +591,12 @@ async function loadPatientPage() {
                 <div class="inference-card">
                     <div class="inference-card__type">${escapeHtml(inference.phenomenonTypeName)}</div>
                     <div class="inference-card__name">${escapeHtml(inference.phenomenonName)}</div>
+                    <div class="obs-table-meta">Strategy: ${escapeHtml(inference.strategyUsed || "UNKNOWN")}</div>
+                    ${(inference.evidence || []).length > 0
+                        ? `<div class="obs-table-meta">Evidence: ${(inference.evidence || [])
+                            .map(item => escapeHtml(item.phenomenonName + " (" + item.presence + ", " + item.source + ")"))
+                            .join(", ")}</div>`
+                        : ""}
                 </div>
             `).join("");
         } catch (error) {
@@ -496,6 +626,7 @@ async function loadLogsPage() {
             <td><pre>${entry.payload}</pre></td>
             <td>${entry.userName}</td>
             <td>${entry.executedAt}</td>
+            <td>${entry.undone ? "Undone" : `<button class="undo-button" data-id="${entry.id}">Undo</button>`}</td>
         </tr>
     `).join("");
 
@@ -509,9 +640,27 @@ async function loadLogsPage() {
             <td>${entry.timestamp}</td>
         </tr>
     `).join("");
+
+    document.querySelectorAll(".undo-button").forEach(button => {
+        button.addEventListener("click", async () => {
+            try {
+                await request(`/api/command-log/${button.dataset.id}/undo`, { method: "POST" });
+                await loadLogsPage();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+    });
 }
 
-loadIndexPage();
-loadCataloguePage();
-loadPatientPage();
-loadLogsPage();
+(async () => {
+    try {
+        await initUserSession();
+    } catch (error) {
+        console.error(error);
+    }
+    await loadIndexPage();
+    await loadCataloguePage();
+    await loadPatientPage();
+    await loadLogsPage();
+})();

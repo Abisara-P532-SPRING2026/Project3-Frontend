@@ -242,6 +242,11 @@ td.obs-cell-value {
     gap: 0.25rem;
 }
 
+.inferred-observation {
+    font-style: italic;
+    opacity: 0.9;
+}
+
 .obs-value-main {
     font-variant-numeric: tabular-nums;
     font-weight: 600;
