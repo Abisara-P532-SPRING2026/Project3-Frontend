@@ -21,7 +21,7 @@
             <h2>Add phenomenon type</h2>
             <form id="phenomenon-type-form">
                 <label>Name
-                    <input name="name" required>
+                    <input name="name" required placeholder="Enter type name">
                 </label>
                 <label>Kind
                     <select name="measurementKind" id="kind-select" required>
@@ -31,7 +31,7 @@
                 </label>
                 <label id="kind-detail-label">
                     <span id="kind-detail-caption">Allowed units (comma separated)</span>
-                    <input name="kindDetail" id="kind-detail-input" autocomplete="off">
+                    <input name="kindDetail" id="kind-detail-input" autocomplete="off" placeholder="e.g. C, F">
                 </label>
                 <button type="submit">Save phenomenon type</button>
             </form>
@@ -42,10 +42,10 @@
             <h2>Add protocol</h2>
             <form id="protocol-form">
                 <label>Name
-                    <input name="name" required>
+                    <input name="name" required placeholder="Enter protocol name">
                 </label>
                 <label>Description
-                    <textarea name="description" rows="4"></textarea>
+                    <textarea name="description" rows="4" placeholder="Enter short description"></textarea>
                 </label>
                 <label>Accuracy rating
                     <select name="accuracyRating" required>

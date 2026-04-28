@@ -150,6 +150,23 @@ button {
     border: 1px solid #cbd5e1;
 }
 
+input::placeholder,
+textarea::placeholder {
+    color: #94a3b8;
+}
+
+select:required:invalid {
+    color: #94a3b8;
+}
+
+select:required:invalid option:not([value=""]) {
+    color: #0f172a;
+}
+
+.is-placeholder {
+    color: #94a3b8;
+}
+
 button {
     background: #1f4b99;
     color: #fff;

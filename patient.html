@@ -29,20 +29,24 @@
             <h2>Record Measurement</h2>
             <form id="measurement-form">
                 <label>Phenomenon type
-                    <select name="phenomenonTypeId" id="measurement-type-select" required></select>
+                    <select name="phenomenonTypeId" id="measurement-type-select" required>
+                        <option value="" selected disabled>Select phenomenon type</option>
+                    </select>
                 </label>
                 <label>Amount
-                    <input type="number" step="0.01" name="amount" required>
+                    <input type="number" step="0.01" name="amount" required placeholder="Enter value">
                 </label>
                 <label>Unit
-                    <select name="unit" id="measurement-unit-select" required></select>
+                    <input type="text" name="unit" id="measurement-unit-input" list="measurement-units-datalist"
+                        maxlength="64" autocomplete="off" required placeholder="Type or pick unit">
                 </label>
+                <datalist id="measurement-units-datalist"></datalist>
                 <label>Protocol (optional)
                     <select name="protocolId" id="measurement-protocol-select">
                         <option value="">None</option>
                     </select>
                 </label>
-                <label>Applicability time <span class="field-hint">(defaults to now if cleared)</span>
+                <label>Applicability time 
                     <input type="datetime-local" name="applicabilityTime" autocomplete="off">
                 </label>
                 <button type="submit">Record measurement</button>
@@ -54,13 +58,18 @@
             <h2>Record Category Observation</h2>
             <form id="category-form">
                 <label>Phenomenon type
-                    <select id="category-phenomenon-type-select" required></select>
+                    <select id="category-phenomenon-type-select" required>
+                        <option value="" selected disabled>Select phenomenon type</option>
+                    </select>
                 </label>
                 <label>Phenomenon
-                    <select name="phenomenonId" id="phenomenon-select" required></select>
+                    <select name="phenomenonId" id="phenomenon-select" required>
+                        <option value="" selected disabled>Select phenomenon</option>
+                    </select>
                 </label>
                 <label>Presence
                     <select name="presence" required>
+                        <option value="" selected disabled>Select presence</option>
                         <option value="PRESENT">Present</option>
                         <option value="ABSENT">Absent</option>
                     </select>
@@ -70,7 +79,7 @@
                         <option value="">None</option>
                     </select>
                 </label>
-                <label>Applicability time <span class="field-hint">(defaults to now if cleared)</span>
+                <label>Applicability time 
                     <input type="datetime-local" name="applicabilityTime" autocomplete="off">
                 </label>
                 <button type="submit">Record category observation</button>

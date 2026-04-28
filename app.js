@@ -82,17 +82,11 @@ function toIsoOrNull(localValue) {
     return localValue ? new Date(localValue).toISOString().slice(0, 19) : null;
 }
 
-
-function formatDatetimeLocal(date) {
-    const pad = value => String(value).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function setDefaultApplicabilityInputs() {
-    const value = formatDatetimeLocal(new Date());
-    document.querySelectorAll('input[name="applicabilityTime"]').forEach(input => {
-        input.value = value;
-    });
+function syncPlaceholderState(element) {
+    if (!element) {
+        return;
+    }
+    element.classList.toggle("is-placeholder", !element.value);
 }
 
 function escapeHtml(text) {
@@ -177,11 +171,13 @@ async function loadCataloguePage() {
         rulesPanel.innerHTML = `
             <h2>Associative functions</h2>
             <table>
-                <thead><tr><th>Rule</th><th>Product</th><th>Strategy</th><th>Threshold</th></tr></thead>
+                <thead><tr><th>Rule</th><th>Product</th><th>Strategy</th><th>Threshold</th><th>Action</th></tr></thead>
                 <tbody id="rules-table"></tbody>
-            </table>`;
+            </table>
+            <p id="rules-strategy-message" class="message"></p>`;
         catalogueMain.appendChild(rulesPanel);
     }
+    upgradeAssociativeRulesPanelChrome();
     if (!hierarchyPanel && catalogueMain) {
         hierarchyPanel = document.createElement("section");
         hierarchyPanel.id = "hierarchy-panel";
@@ -206,6 +202,66 @@ async function loadCataloguePage() {
         kindDetailCaption.textContent = qualitative
             ? "Phenomena (comma separated)"
             : "Allowed units (comma separated)";
+    }
+
+    /** Older sessions may have the rules panel without Action column or feedback line. */
+    function upgradeAssociativeRulesPanelChrome() {
+        const rulesPanel = document.getElementById("rules-panel");
+        if (!rulesPanel) {
+            return;
+        }
+        const theadRow = rulesPanel.querySelector("thead tr");
+        if (theadRow && theadRow.cells.length === 4) {
+            const th = document.createElement("th");
+            th.textContent = "Action";
+            theadRow.appendChild(th);
+        }
+        const hint = rulesPanel.querySelector(".obs-table-meta");
+        if (!hint) {
+            const p = document.createElement("p");
+            p.className = "obs-table-meta";
+            const h2 = rulesPanel.querySelector("h2");
+            if (h2 && h2.nextSibling) {
+                rulesPanel.insertBefore(p, h2.nextSibling);
+            } else {
+                rulesPanel.insertBefore(p, rulesPanel.firstChild.nextSibling);
+            }
+        }
+        if (!document.getElementById("rules-strategy-message")) {
+            const msg = document.createElement("p");
+            msg.id = "rules-strategy-message";
+            msg.className = "message";
+            rulesPanel.appendChild(msg);
+        }
+    }
+
+    async function saveAssociativeRuleStrategy(ruleId) {
+        const msg = document.getElementById("rules-strategy-message");
+        const strategyEl = document.querySelector(`.rule-strategy-select[data-id="${ruleId}"]`);
+        const thresholdEl = document.querySelector(`.rule-threshold-input[data-id="${ruleId}"]`);
+        if (!strategyEl || !thresholdEl) {
+            return;
+        }
+        const strategy = strategyEl.value;
+        const thresholdRaw = thresholdEl.value;
+        try {
+            await request(`/api/associative-functions/${ruleId}/strategy`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    strategyType: strategy,
+                    threshold: thresholdRaw === "" ? null : Number(thresholdRaw)
+                })
+            });
+            if (msg) {
+                msg.textContent = "Rule settings saved.";
+                msg.dataset.level = "ok";
+            }
+        } catch (error) {
+            if (msg) {
+                msg.textContent = error.message || "Save failed.";
+                msg.dataset.level = "error";
+            }
+        }
     }
 
     async function refreshCatalogue() {
@@ -267,21 +323,11 @@ async function loadCataloguePage() {
                         </select>
                     </td>
                     <td><input class="rule-threshold-input" data-id="${rule.id}" type="number" step="0.1" value="${rule.threshold ?? ""}"></td>
+                    <td><button type="button" class="rule-save-btn" data-rule-id="${rule.id}">Save</button></td>
                 </tr>
             `).join("");
-            document.querySelectorAll(".rule-strategy-select, .rule-threshold-input").forEach(element => {
-                element.addEventListener("change", async () => {
-                    const id = Number(element.dataset.id);
-                    const strategy = document.querySelector(`.rule-strategy-select[data-id="${id}"]`).value;
-                    const thresholdRaw = document.querySelector(`.rule-threshold-input[data-id="${id}"]`).value;
-                    await request(`/api/associative-functions/${id}/strategy`, {
-                        method: "PUT",
-                        body: JSON.stringify({
-                            strategyType: strategy,
-                            threshold: thresholdRaw === "" ? null : Number(thresholdRaw)
-                        })
-                    });
-                });
+            rulesTable.querySelectorAll(".rule-save-btn").forEach(button => {
+                button.addEventListener("click", () => saveAssociativeRuleStrategy(Number(button.dataset.ruleId)));
             });
         }
 
@@ -376,16 +422,26 @@ async function loadPatientPage() {
         const qualitativeTypes = types.filter(type => type.measurementKind === "QUALITATIVE");
 
         const typeSelect = document.getElementById("measurement-type-select");
-        typeSelect.innerHTML = quantitativeTypes.map(type => `<option value="${type.id}">${escapeHtml(type.name)}</option>`).join("");
+        typeSelect.innerHTML = `<option value="" selected disabled>Select phenomenon type</option>` + quantitativeTypes
+            .map(type => `<option value="${type.id}">${escapeHtml(type.name)}</option>`)
+            .join("");
 
         const typeMap = new Map(quantitativeTypes.map(type => [String(type.id), type]));
-        const unitSelect = document.getElementById("measurement-unit-select");
-        function syncUnits() {
+        const unitDatalist = document.getElementById("measurement-units-datalist");
+        const unitInput = document.getElementById("measurement-unit-input");
+
+        function syncMeasurementUnitSuggestions() {
             const selected = typeMap.get(typeSelect.value);
-            unitSelect.innerHTML = ((selected && selected.allowedUnits) || []).map(unit => `<option value="${escapeHtml(unit)}">${escapeHtml(unit)}</option>`).join("");
+            const units = (selected && selected.allowedUnits) || [];
+            if (unitDatalist) {
+                unitDatalist.innerHTML = units.map(unit => `<option value="${escapeHtml(unit)}"></option>`).join("");
+            }
+            if (unitInput) {
+                unitInput.value = "";
+            }
         }
-        typeSelect.onchange = syncUnits;
-        syncUnits();
+        typeSelect.onchange = syncMeasurementUnitSuggestions;
+        syncMeasurementUnitSuggestions();
 
         const categoryTypeSelect = document.getElementById("category-phenomenon-type-select");
         const phenomenonSelect = document.getElementById("phenomenon-select");
@@ -395,11 +451,11 @@ async function loadPatientPage() {
             const typeId = categoryTypeSelect.value;
             const selectedType = qualitativeWithPhenomena.find(type => String(type.id) === typeId);
             if (!selectedType) {
-                phenomenonSelect.innerHTML = `<option value="">Choose a phenomenon type above</option>`;
+                phenomenonSelect.innerHTML = `<option value="" selected disabled>Select phenomenon</option>`;
                 return;
             }
             const phenomena = selectedType.phenomena || [];
-            phenomenonSelect.innerHTML = phenomena.map(phenomenon =>
+            phenomenonSelect.innerHTML = `<option value="" selected disabled>Select phenomenon</option>` + phenomena.map(phenomenon =>
                 `<option value="${phenomenon.id}">${escapeHtml(phenomenon.name)}</option>`
             ).join("");
         }
@@ -416,7 +472,7 @@ async function loadPatientPage() {
         } else {
             categoryTypeSelect.disabled = false;
             phenomenonSelect.disabled = false;
-            categoryTypeSelect.innerHTML = qualitativeWithPhenomena.map(type =>
+            categoryTypeSelect.innerHTML = `<option value="" selected disabled>Select phenomenon type</option>` + qualitativeWithPhenomena.map(type =>
                 `<option value="${type.id}">${escapeHtml(type.name)}</option>`
             ).join("");
             categoryTypeSelect.onchange = syncCategoryPhenomenaOptions;
@@ -427,12 +483,22 @@ async function loadPatientPage() {
             `<option value="${protocol.id}">${escapeHtml(protocol.name)}</option>`
         ).join("");
 
-        document.getElementById("measurement-protocol-select").innerHTML =
+        const measurementProtocolSelect = document.getElementById("measurement-protocol-select");
+        const categoryProtocolSelect = document.getElementById("category-protocol-select");
+        measurementProtocolSelect.innerHTML =
             `<option value="">None</option>${protocolOptionRows}`;
-        document.getElementById("category-protocol-select").innerHTML =
+        categoryProtocolSelect.innerHTML =
             `<option value="">None</option>${protocolOptionRows}`;
 
-        setDefaultApplicabilityInputs();
+        [measurementProtocolSelect, categoryProtocolSelect].forEach(select => {
+            select.onchange = () => syncPlaceholderState(select);
+            syncPlaceholderState(select);
+        });
+        document.querySelectorAll('input[name="applicabilityTime"]').forEach(input => {
+            input.onchange = () => syncPlaceholderState(input);
+            input.oninput = () => syncPlaceholderState(input);
+            syncPlaceholderState(input);
+        });
     }
 
     async function refreshPatient() {
@@ -494,7 +560,10 @@ async function loadPatientPage() {
                 <td>${escapeHtml(observation.phenomenonType)}</td>
                 ${renderObservationValueCell(observation)}
                 <td>${formatDateTime(observation.applicabilityTime)}</td>
-                <td>${formatDateTime(observation.recordingTime)}</td>
+                <td>
+                    ${formatDateTime(observation.recordingTime)}
+                    <div class="obs-table-meta">By: ${escapeHtml(observation.actingUser || "—")}</div>
+                </td>
                 <td>${observation.protocol ? escapeHtml(observation.protocol) : "—"}</td>
                 <td>
                     <span class="status ${observation.status}">${escapeHtml(observation.status)}</span>
@@ -527,6 +596,15 @@ async function loadPatientPage() {
     document.getElementById("measurement-form").addEventListener("submit", async event => {
         event.preventDefault();
         const form = event.target;
+        if (!form.phenomenonTypeId.value) {
+            setMessage("measurement-message", "Select phenomenon type.", true);
+            return;
+        }
+        const unit = (form.unit && form.unit.value.trim()) || "";
+        if (!unit) {
+            setMessage("measurement-message", "Enter a unit.", true);
+            return;
+        }
         try {
             await request("/api/observations/measurement", {
                 method: "POST",
@@ -534,7 +612,7 @@ async function loadPatientPage() {
                     patientId: Number(patientId),
                     phenomenonTypeId: Number(form.phenomenonTypeId.value),
                     amount: Number(form.amount.value),
-                    unit: form.unit.value,
+                    unit,
                     protocolId: form.protocolId.value ? Number(form.protocolId.value) : null,
                     applicabilityTime: toIsoOrNull(form.applicabilityTime.value)
                 })
@@ -584,8 +662,7 @@ async function loadPatientPage() {
                 : `${inferences.length} inferred concept(s) from active rules.`);
             document.getElementById("inference-results").innerHTML = inferences.length === 0
                 ? `<div class="inference-empty-hint">
-                    <p class="obs-table-meta">Rules only use <strong>active</strong> category observations marked <strong>Present</strong>. Measurements are not used. <strong>Rejected</strong> rows do not count.</p>
-                    <p class="obs-table-meta">The starter rule needs both <strong>Structural Condition → Poor</strong> and <strong>Symptom → Fever</strong> as Present; it then suggests <strong>Symptom → High Risk</strong> (unless High Risk is already Present). If any of that is missing, the list here stays empty.</p>
+                    <p class="obs-table-meta">No inferred rule to show for this patient right now.</p>
                 </div>`
                 : inferences.map(inference => `
                 <div class="inference-card">
